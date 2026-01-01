@@ -1,0 +1,55 @@
+# Create Simulator
+set ns [new Simulator]
+# Open trace files
+set trf [open 1.tr w]
+$ns trace-all $trf
+set namf [open 1.nam w]
+$ns namtrace-all $namf
+# Create nodes
+set n0 [$ns node]
+set n1 [$ns node]
+set n2 [$ns node]
+$n0 label "source node"
+$n1 label "Intermediate node"
+$n2 label "destination node"
+# Create links
+$ns duplex-link $n0 $n1 100Kb 100ms DropTail
+$ns duplex-link $n1 $n2 5Mb 200ms DropTail
+# Queue limit between n0 and n1
+$ns queue-limit $n0 $n1 10
+# -------------------------------
+# Create TCP Agent (Data packets)
+# -------------------------------
+set tcp [new Agent/TCP]
+$tcp set fid_ 1 ;# Data Flow ID
+$ns color 1 Blue ;# Data packets color
+$ns attach-agent $n0 $tcp
+# --------------------------------
+# Create TCP Sink (ACK packets)
+# --------------------------------
+set sink [new Agent/TCPSink]
+$sink set fid_ 2 ;# ACK Flow ID
+$ns color 2 Red ;# ACK packets color
+$ns attach-agent $n2 $sink
+# Connect agents
+$ns connect $tcp $sink
+# FTP application
+set ftp [new Application/FTP]
+$ftp attach-agent $tcp
+# Packet size and interval
+$ftp set packetSize_ 500
+$ftp set interval_ 0.001
+# Finish procedure
+proc finish {} {
+ global ns trf namf
+ $ns flush-trace
+ close $trf
+ close $namf
+ exec nam 1.nam &
+ exit 0
+}
+# Simulation events
+$ns at 0.1 "$ftp start"
+$ns at 10.0 "finish"
+# Run simulation
+$ns run
